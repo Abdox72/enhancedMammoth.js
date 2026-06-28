@@ -1,21 +1,30 @@
 {
-  "name": "mammoth",
-  "version": "1.12.0",
-  "author": "Michael Williamson <mike@zwobble.org>",
-  "description": "Convert Word documents from docx to simple HTML and Markdown",
+  "name": "enhanced-mammoth",
+  "version": "1.0.0",
+  "author": "Abdox72",
+  "description": "Enhanced Mammoth: convert Word docx to HTML with text/background colors, RTL/LTR, fonts, and shading support",
   "keywords": [
     "docx",
     "html",
     "office",
     "word",
     "markdown",
-    "md"
+    "md",
+    "mammoth",
+    "rtl",
+    "bidi",
+    "arabic",
+    "colors"
   ],
   "main": "./lib/index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mwilliamson/mammoth.js.git"
+    "url": "https://github.com/Abdox72/enhancedMammoth.js.git"
   },
+  "bugs": {
+    "url": "https://github.com/Abdox72/enhancedMammoth.js/issues"
+  },
+  "homepage": "https://github.com/Abdox72/enhancedMammoth.js#readme",
   "dependencies": {
     "@xmldom/xmldom": "^0.8.6",
     "argparse": "~1.0.3",
@@ -45,13 +54,14 @@
     "./lib/docx/files.js": "./browser/docx/files.js"
   },
   "bin": {
-    "mammoth": "bin/mammoth"
+    "enhanced-mammoth": "bin/mammoth"
   },
   "scripts": {
     "pretest": "eslint lib test",
     "test": "mocha 'test/**/*.tests.js'",
     "check-typescript": "tsc --noEmit lib/index.d.ts",
-    "prepare": "make mammoth.browser.min.js"
+    "build:browser": "browserify lib/index.js --standalone mammoth -p browserify-prepend-licenses > mammoth.browser.js && uglifyjs mammoth.browser.js -c > mammoth.browser.min.js",
+    "prepare": "npm run build:browser"
   },
   "license": "BSD-2-Clause",
   "engines": {

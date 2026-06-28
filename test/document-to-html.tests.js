@@ -344,11 +344,11 @@ test('small caps runs can be configured with style mapping', function() {
 });
 
 
-test('highlighted runs are ignored by default', function() {
+test('highlighted runs are converted to background color by default', function() {
     var run = runOfText("Hello.", {highlight: "yellow"});
     var converter = new DocumentConverter();
     return converter.convertToHtml(run).then(function(result) {
-        assert.equal(result.value, "Hello.");
+        assert.equal(result.value, '<span style="background-color:#FFFF00">Hello.</span>');
     });
 });
 
@@ -386,6 +386,170 @@ test('highlighted runs can be configured with style mapping for specific highlig
     });
     return converter.convertToHtml(paragraph).then(function(result) {
         assert.equal(result.value, '<p><mark class="yellow">Yellow</mark><mark>Red</mark></p>');
+    });
+});
+
+test('text color is converted to inline style', function() {
+    var run = runOfText("Hello.", {color: "#FF0000"});
+    var converter = new DocumentConverter();
+    return converter.convertToHtml(run).then(function(result) {
+        assert.equal(result.value, '<span style="color:#FF0000">Hello.</span>');
+    });
+});
+
+test('background color is converted to inline style', function() {
+    var run = runOfText("Hello.", {backgroundColor: "#FFFF00"});
+    var converter = new DocumentConverter();
+    return converter.convertToHtml(run).then(function(result) {
+        assert.equal(result.value, '<span style="background-color:#FFFF00">Hello.</span>');
+    });
+});
+
+test('text color and background color are merged into one span', function() {
+    var run = runOfText("Hello.", {color: "#FF0000", backgroundColor: "#FFFF00"});
+    var converter = new DocumentConverter();
+    return converter.convertToHtml(run).then(function(result) {
+        assert.equal(
+            result.value,
+            '<span style="color:#FF0000;background-color:#FFFF00">Hello.</span>'
+        );
+    });
+});
+
+test('font and font size are converted to inline style', function() {
+    var run = runOfText("Hello.", {font: "Arial", fontSize: 14});
+    var converter = new DocumentConverter();
+    return converter.convertToHtml(run).then(function(result) {
+        assert.equal(result.value, '<span style="font-family:Arial;font-size:14pt">Hello.</span>');
+    });
+});
+
+test('font names with spaces are quoted in inline style', function() {
+    var run = runOfText("Hello.", {font: "Times New Roman"});
+    var converter = new DocumentConverter();
+    return converter.convertToHtml(run).then(function(result) {
+        assert.equal(result.value, '<span style="font-family:&quot;Times New Roman&quot;">Hello.</span>');
+    });
+});
+
+test('colored runs can be configured with style mapping', function() {
+    var run = runOfText("Hello.", {color: "#FF0000"});
+    var converter = new DocumentConverter({
+        styleMap: [
+            {
+                from: documentMatchers.color({val: "FF0000"}),
+                to: htmlPaths.elements([htmlPaths.element("span", {"class": "red"})])
+            }
+        ]
+    });
+    return converter.convertToHtml(run).then(function(result) {
+        assert.equal(result.value, '<span class="red">Hello.</span>');
+    });
+});
+
+test('shaded runs can be configured with style mapping', function() {
+    var run = runOfText("Hello.", {backgroundColor: "#FFFF00"});
+    var converter = new DocumentConverter({
+        styleMap: [
+            {
+                from: documentMatchers.shading({val: "FFFF00"}),
+                to: htmlPaths.elements([htmlPaths.element("span", {"class": "highlight"})])
+            }
+        ]
+    });
+    return converter.convertToHtml(run).then(function(result) {
+        assert.equal(result.value, '<span class="highlight">Hello.</span>');
+    });
+});
+
+test('custom underline style uses inline text decoration', function() {
+    var run = runOfText("Hello.", {
+        isUnderline: true,
+        underlineStyle: "double",
+        underlineColor: "#FF0000"
+    });
+    var converter = new DocumentConverter();
+    return converter.convertToHtml(run).then(function(result) {
+        assert.equal(
+            result.value,
+            '<span style="text-decoration:underline;text-decoration-style:double;text-decoration-color:#FF0000">Hello.</span>'
+        );
+    });
+});
+
+test('paragraph background color is converted to inline style', function() {
+    var paragraph = new documents.Paragraph([runOfText("Hello.")], {
+        backgroundColor: "#FFFF00"
+    });
+    var converter = new DocumentConverter();
+    return converter.convertToHtml(paragraph).then(function(result) {
+        assert.equal(result.value, '<p><span style="background-color:#FFFF00">Hello.</span></p>');
+    });
+});
+
+test('table cell background color is converted to inline style', function() {
+    var table = new documents.Table([
+        new documents.TableRow([
+            new documents.TableCell([new documents.Paragraph([runOfText("Cell")])], {
+                backgroundColor: "#FFFF00"
+            })
+        ])
+    ]);
+    var converter = new DocumentConverter();
+    return converter.convertToHtml(table).then(function(result) {
+        assert.equal(result.value, '<table><tr><td style="background-color:#FFFF00"><p>Cell</p></td></tr></table>');
+    });
+});
+
+test('rtl paragraph is converted with dir attribute', function() {
+    var paragraph = new documents.Paragraph([runOfText("مرحبا", {rightToLeft: true})], {
+        isRightToLeft: true
+    });
+    var converter = new DocumentConverter();
+    return converter.convertToHtml(paragraph).then(function(result) {
+        assert.equal(
+            result.value,
+            '<p dir="rtl"><span dir="rtl">مرحبا</span></p>'
+        );
+    });
+});
+
+test('mixed rtl and ltr runs in rtl paragraph', function() {
+    var paragraph = new documents.Paragraph([
+        runOfText("Hello", {rightToLeft: false}),
+        runOfText(" مرحبا", {rightToLeft: true})
+    ], {
+        isRightToLeft: true
+    });
+    var converter = new DocumentConverter();
+    return converter.convertToHtml(paragraph).then(function(result) {
+        assert.equal(
+            result.value,
+            '<p dir="rtl"><span dir="ltr">Hello</span><span dir="rtl"> مرحبا</span></p>'
+        );
+    });
+});
+
+test('ltr run in rtl paragraph without explicit rtl does not get dir attribute', function() {
+    var paragraph = new documents.Paragraph([
+        runOfText("Hello")
+    ], {
+        isRightToLeft: true
+    });
+    var converter = new DocumentConverter();
+    return converter.convertToHtml(paragraph).then(function(result) {
+        assert.equal(result.value, '<p dir="rtl">Hello</p>');
+    });
+});
+
+test('rtl paragraph alignment start uses right text-align', function() {
+    var paragraph = new documents.Paragraph([runOfText("مرحبا")], {
+        isRightToLeft: true,
+        alignment: "start"
+    });
+    var converter = new DocumentConverter();
+    return converter.convertToHtml(paragraph).then(function(result) {
+        assert.equal(result.value, '<p dir="rtl" style="text-align:right">مرحبا</p>');
     });
 });
 

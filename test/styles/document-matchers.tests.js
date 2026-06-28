@@ -65,6 +65,18 @@ test("highlight matcher with color does not match highlights with other colors",
     assert.ok(!matcher.matches({type: "highlight", color: "red"}));
 });
 
+test("color matcher matches color elements", function() {
+    var matcher = documentMatchers.color({val: "FF0000"});
+    assert.ok(matcher.matches({type: "color", val: "#FF0000"}));
+    assert.ok(!matcher.matches({type: "color", val: "#00FF00"}));
+});
+
+test("shading matcher matches shading elements", function() {
+    var matcher = documentMatchers.shading({val: "FFFF00"});
+    assert.ok(matcher.matches({type: "shading", val: "#FFFF00"}));
+    assert.ok(!matcher.matches({type: "shading", val: "#FF0000"}));
+});
+
 function paragraphWithStyle(styleId, styleName) {
     return new Paragraph([], {styleId: styleId, styleName: styleName});
 }

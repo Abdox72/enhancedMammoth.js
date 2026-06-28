@@ -223,6 +223,20 @@ test("styleReader.readDocumentMatcher", {
         );
     },
 
+    "reads color with val": function() {
+        assertDocumentMatcher(
+            "color[val='FF0000']",
+            documentMatchers.color({val: "FF0000"})
+        );
+    },
+
+    "reads shading with val": function() {
+        assertDocumentMatcher(
+            "shading[val='FFFF00']",
+            documentMatchers.shading({val: "FFFF00"})
+        );
+    },
+
     "reads comment-reference": function() {
         assertDocumentMatcher(
             "comment-reference",

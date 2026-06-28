@@ -1,13 +1,18 @@
-# Mammoth .docx to HTML converter
+# Enhanced Mammoth — .docx to HTML converter
 
-Mammoth is designed to convert .docx documents,
-such as those created by Microsoft Word, Google Docs and LibreOffice,
-and convert them to HTML.
+This project is an enhanced fork of [Mammoth](https://github.com/mwilliamson/mammoth.js),
+maintained at [github.com/Abdox72/enhancedMammoth.js](https://github.com/Abdox72/enhancedMammoth.js),
+which converts `.docx` documents (Microsoft Word, Google Docs, LibreOffice, etc.) to HTML.
+
 Mammoth aims to produce simple and clean HTML by using semantic information in the document,
-and ignoring other details.
+and ignoring other details where possible.
 For instance,
 Mammoth converts any paragraph with the style `Heading 1` to `h1` elements,
 rather than attempting to exactly copy the styling (font, text size, colour, etc.) of the heading.
+
+**This fork adds support for visual formatting that upstream Mammoth does not emit by default:**
+text and background colours, font family/size, bidirectional (RTL/LTR) text, and more.
+See [Enhanced formatting](#enhanced-formatting) below.
 
 There's a large mismatch between the structure used by .docx and the structure of HTML,
 meaning that the conversion is unlikely to be perfect for more complicated documents.
@@ -32,6 +37,21 @@ The following features are currently supported:
 
 * Bold, italics, underlines, strikethrough, superscript and subscript.
 
+* **Text colour and background colour** (run shading), emitted as inline CSS.
+
+* **Font family and font size**, emitted as inline CSS.
+
+* **Text highlights** (e.g. yellow marker), converted to CSS background colours by default.
+
+* **Right-to-left (RTL) and left-to-right (LTR) text**, including mixed Arabic/English paragraphs,
+  using Word's `w:bidi` and `w:rtl` properties.
+
+* **Paragraph and table cell background shading.**
+
+* **Theme colours** from `word/theme/theme1.xml`, including tint and shade modifiers.
+
+* **Custom underline styles and underline colours** (double, dotted, wavy, etc.).
+
 * Links.
 
 * Line breaks.
@@ -40,6 +60,81 @@ The following features are currently supported:
   that appears after the paragraph containing the text box.
 
 * Comments.
+
+## Enhanced formatting
+
+This fork reads additional run and paragraph properties from `.docx` files and converts them to HTML.
+
+### Text and background colour
+
+Explicit hex colours on runs are converted to inline styles:
+
+```html
+<span style="color:#FF0000">Red text</span>
+<span style="background-color:#FFFF00">Highlighted background</span>
+```
+
+When both are set on the same run, they are merged into a single `<span>`.
+
+Word theme colours (e.g. `w:themeColor="accent1"`) are resolved using the document theme when possible.
+
+### Font family and size
+
+```html
+<span style="font-family:Arial;font-size:14pt">Styled text</span>
+```
+
+Font names containing spaces are quoted in the CSS output.
+
+### Highlights
+
+Word text highlights (the marker pen tool) are converted to background colours by default
+(e.g. yellow → `#FFFF00`). You can override this with a style map (see [Highlight](#highlight)).
+
+### Bidirectional text (RTL / LTR)
+
+Word stores direction using two properties:
+
+| Word XML | HTML output |
+|----------|-------------|
+| `w:bidi` on paragraph | `<p dir="rtl">` |
+| `w:rtl` on run | `<span dir="rtl">` |
+| Explicit LTR run inside RTL paragraph | `<span dir="ltr">` |
+
+Paragraph alignment values `start` and `end` are resolved correctly for RTL paragraphs
+(e.g. `start` → `text-align:right` in an RTL paragraph).
+
+**Note:** Direction must be set in Word (RTL button or paragraph direction settings).
+If Word does not write `w:bidi` / `w:rtl` into the file, mammoth cannot infer direction automatically.
+
+Example mixed Arabic/English output:
+
+```html
+<p dir="rtl">
+  <span dir="ltr">Hello</span>
+  <span dir="rtl"> مرحبا</span>
+</p>
+```
+
+### Paragraph and table cell shading
+
+Background shading on paragraphs and table cells is emitted as inline `background-color` styles.
+
+### Customising colours with style maps
+
+You can override the default colour output using style maps:
+
+```javascript
+var options = {
+    styleMap: [
+        "color[val='FF0000'] => span.text-red",
+        "shading[val='FFFF00'] => span.bg-yellow",
+        "highlight[color='yellow'] => mark"
+    ]
+};
+```
+
+See [Text colour](#text-colour) and [Shading](#shading) in the style map reference.
 
 ## Web demo
 
@@ -51,7 +146,11 @@ The easiest way to try out mammoth is to use the web demo:
 
 ## Installation
 
-    npm install mammoth
+    npm install enhanced-mammoth
+
+Upstream Mammoth (without enhanced formatting) is available as `npm install mammoth`.
+
+Published on npm as [`enhanced-mammoth`](https://www.npmjs.com/package/enhanced-mammoth) by [Abdox72](https://github.com/Abdox72).
 
 ## Other supported platforms
 
@@ -73,7 +172,7 @@ The easiest way to try out mammoth is to use the web demo:
 You can convert docx files by passing the path to the docx file and the output file.
 For instance:
 
-    mammoth document.docx output.html
+    enhanced-mammoth document.docx output.html
 
 If no output file is specified, output is written to stdout instead.
 
@@ -123,10 +222,10 @@ For instance:
 
 ### Library
 
-In node.js and the browser, mammoth can be required in the usual way:
+In node.js and the browser, enhanced-mammoth can be required in the usual way:
 
 ```javascript
-var mammoth = require("mammoth");
+var mammoth = require("enhanced-mammoth");
 ```
 
 Alternatively, you may use the standalone JavaScript file `mammoth.browser.js`,
@@ -828,6 +927,10 @@ Match explicitly highlighted text:
 highlight
 ```
 
+By default in this fork, highlighted text is converted to a CSS background colour
+(e.g. yellow → `#FFFF00`) without needing a style map.
+Use a style map to override the default HTML output.
+
 Note that this matches text that has had a highlight explicitly applied to it.
 It will not match any text that is highlighted because of its paragraph or run style.
 
@@ -838,7 +941,27 @@ For instance, to match yellow highlights:
 highlight[color='yellow']
 ```
 
-The set of colours typically used are:
+#### Text colour
+
+Match text with an explicit colour (hex value without `#`):
+
+```
+color[val='FF0000']
+```
+
+When a matching style map entry is found, it replaces the default inline `color` style.
+
+#### Shading
+
+Match text with an explicit background fill colour (hex value without `#`):
+
+```
+shading[val='FFFF00']
+```
+
+When a matching style map entry is found, it replaces the default inline `background-color` style.
+
+The set of highlight colour names typically used are:
 
 * `black`
 * `blue`
@@ -979,6 +1102,28 @@ any existing document transforms should be rewritten in one of two ways:
 ### 0.2.0
 
 The function `mammoth.style()` was renamed to `mammoth.styleMapping()`.
+
+## Publishing to npm
+
+Package name: **`enhanced-mammoth`**  
+Repository: https://github.com/Abdox72/enhancedMammoth.js
+
+### First-time publish
+
+```bash
+npm login
+npm test
+npm publish
+```
+
+### Release updates
+
+```bash
+npm version patch
+npm publish
+```
+
+The `prepare` script builds `mammoth.browser.min.js` automatically before publish.
 
 ## Acknowledgements
 

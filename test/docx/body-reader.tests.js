@@ -1129,6 +1129,129 @@ test("when highlight is none then run has no highlight", function() {
     assert.deepEqual(run.highlight, null);
 });
 
+test("run has color read from properties", function() {
+    var colorXml = new XmlElement("w:color", {"w:val": "FF0000"});
+    var runXml = runWithProperties([colorXml]);
+
+    var run = readXmlElementValue(runXml);
+    assert.deepEqual(run.color, "#FF0000");
+});
+
+test("when color is auto then run has no color", function() {
+    var colorXml = new XmlElement("w:color", {"w:val": "auto"});
+    var runXml = runWithProperties([colorXml]);
+
+    var run = readXmlElementValue(runXml);
+    assert.deepEqual(run.color, null);
+});
+
+test("run has background color read from shading", function() {
+    var shdXml = new XmlElement("w:shd", {"w:fill": "FFFF00"});
+    var runXml = runWithProperties([shdXml]);
+
+    var run = readXmlElementValue(runXml);
+    assert.deepEqual(run.backgroundColor, "#FFFF00");
+});
+
+test("when shading fill is auto then run has no background color", function() {
+    var shdXml = new XmlElement("w:shd", {"w:fill": "auto"});
+    var runXml = runWithProperties([shdXml]);
+
+    var run = readXmlElementValue(runXml);
+    assert.deepEqual(run.backgroundColor, null);
+});
+
+test("run has theme color resolved from theme", function() {
+    var themeXml = new XmlElement("a:theme", {}, [
+        new XmlElement("a:themeElements", {}, [
+            new XmlElement("a:clrScheme", {}, [
+                new XmlElement("a:accent1", {}, [
+                    new XmlElement("a:srgbClr", {"val": "4472C4"})
+                ])
+            ])
+        ])
+    ]);
+    var theme = require("../../lib/docx/theme-reader").readThemeXml(themeXml);
+    var colorXml = new XmlElement("w:color", {
+        "w:val": "4472C4",
+        "w:themeColor": "accent1"
+    });
+    var runXml = runWithProperties([colorXml]);
+
+    var run = readXmlElementValue(runXml, {theme: theme});
+    assert.deepEqual(run.color, "#4472C4");
+});
+
+test("run has underline style and color read from properties", function() {
+    var underlineXml = new XmlElement("w:u", {"w:val": "double", "w:color": "FF0000"});
+    var runXml = runWithProperties([underlineXml]);
+
+    var run = readXmlElementValue(runXml);
+    assert.deepEqual(run.isUnderline, true);
+    assert.deepEqual(run.underlineStyle, "double");
+    assert.deepEqual(run.underlineColor, "#FF0000");
+});
+
+test("paragraph has background color read from shading", function() {
+    var shdXml = new XmlElement("w:shd", {"w:fill": "FFFF00"});
+    var propertiesXml = new XmlElement("w:pPr", {}, [shdXml]);
+    var paragraphXml = new XmlElement("w:p", {}, [propertiesXml]);
+
+    var paragraph = readXmlElementValue(paragraphXml);
+    assert.deepEqual(paragraph.backgroundColor, "#FFFF00");
+});
+
+test("table cell has background color read from shading", function() {
+    var shdXml = new XmlElement("w:shd", {"w:fill": "FFFF00"});
+    var propertiesXml = new XmlElement("w:tcPr", {}, [shdXml]);
+    var textXml = new XmlElement("w:t", {}, [xml.text("Cell")]);
+    var runXml = new XmlElement("w:r", {}, [textXml]);
+    var paragraphXml = new XmlElement("w:p", {}, [runXml]);
+    var cellXml = new XmlElement("w:tc", {}, [propertiesXml, paragraphXml]);
+
+    var cell = readXmlElementValue(cellXml);
+    assert.deepEqual(cell.backgroundColor, "#FFFF00");
+});
+
+test("paragraph has rtl layout when w:bidi is present", function() {
+    var bidiXml = new XmlElement("w:bidi");
+    var propertiesXml = new XmlElement("w:pPr", {}, [bidiXml]);
+    var paragraphXml = new XmlElement("w:p", {}, [propertiesXml]);
+
+    var paragraph = readXmlElementValue(paragraphXml);
+    assert.deepEqual(paragraph.isRightToLeft, true);
+});
+
+test("paragraph is ltr by default", function() {
+    var paragraphXml = new XmlElement("w:p", {}, []);
+
+    var paragraph = readXmlElementValue(paragraphXml);
+    assert.deepEqual(paragraph.isRightToLeft, false);
+});
+
+test("run has rtl reading order when w:rtl is present", function() {
+    var rtlXml = new XmlElement("w:rtl");
+    var runXml = runWithProperties([rtlXml]);
+
+    var run = readXmlElementValue(runXml);
+    assert.deepEqual(run.rightToLeft, true);
+});
+
+test("run has explicit ltr when w:rtl is false", function() {
+    var rtlXml = new XmlElement("w:rtl", {"w:val": "0"});
+    var runXml = runWithProperties([rtlXml]);
+
+    var run = readXmlElementValue(runXml);
+    assert.deepEqual(run.rightToLeft, false);
+});
+
+test("run inherits direction when w:rtl is absent", function() {
+    var runXml = runWithProperties([]);
+
+    var run = readXmlElementValue(runXml);
+    assert.deepEqual(run.rightToLeft, null);
+});
+
 test("run properties not included as child of run", function() {
     var runStyleXml = new XmlElement("w:rStyle");
     var runPropertiesXml = new XmlElement("w:rPr", {}, [runStyleXml]);
